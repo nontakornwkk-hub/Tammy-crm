@@ -1,0 +1,16 @@
+import type { Metadata } from "next";
+import "./globals.css";
+import { AppProvider } from "@/components/app-provider";
+
+export const metadata: Metadata = {
+  title: "แทมมี่อาหารสัตว์ | ระบบสมาชิก",
+  description: "ระบบสมาชิกและสะสมแต้มสำหรับร้านแทมมี่อาหารสัตว์",
+};
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="th">
+      <body><AppProvider>{children}</AppProvider></body>
+    </html>
+  );
+}

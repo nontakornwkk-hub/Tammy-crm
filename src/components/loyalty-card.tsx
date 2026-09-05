@@ -1,0 +1,7 @@
+import Image from "next/image";
+
+export function LoyaltyCard({ color = "#ef4d43", points = 0, rank = "Member", nextRank = "Silver", nextAt = 1000 }: { color?: string; points?: number; rank?: string; nextRank?: string; nextAt?: number }) {
+  const remaining = Math.max(0, nextAt - points);
+  const progress = Math.min(100, Math.round((points / Math.max(nextAt, 1)) * 100));
+  return <div className="relative overflow-hidden rounded-[20px] p-5 text-white shadow-lg" style={{ background: `linear-gradient(135deg,${color},#d93731)` }}><div className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10" /><p className="relative text-xs text-white/80">แต้มสะสมของคุณ</p><div className="relative mt-1 text-4xl font-black">{points.toLocaleString()} <span className="text-sm">แต้ม</span></div><div className="relative mt-4 font-bold">♛ {rank}</div><p className="relative mt-2 text-xs">{remaining > 0 ? `อีก ${remaining.toLocaleString()} แต้ม สู่ ${nextRank}` : `คุณถึงเกณฑ์ ${nextRank} แล้ว`}</p><div className="relative mt-2 h-2 rounded-full bg-white/30"><div className="h-full rounded-full bg-amber-300 transition-[width]" style={{ width: `${progress}%` }} /></div><Image src="/assets/mascots/tammy-cat.png" alt="มาสคอตแมวแทมมี่" width={112} height={112} className="pointer-events-none absolute -bottom-1 right-1 h-28 w-28 object-contain drop-shadow-md" /><div className="relative mt-4 inline-flex rounded-full bg-white/15 px-3 py-1 text-[10px]">แต้มไม่มีวันหมดอายุ</div></div>;
+}
