@@ -1,93 +1,142 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Download, Eye, Filter, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { CalendarDays, Check, Crown, Download, History, KeyRound, LockKeyhole, Plus, Search, Star, UserRound } from "lucide-react";
 import { Modal, useFeedback } from "@/components/app-provider";
-import { PageHeader } from "@/components/page-header";
-import { Badge, Button, Field, Input, Select, Surface } from "@/components/ui";
+import { Badge, Button, Field, Input, Surface } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 
-type Rank = "Gold" | "Silver" | "Member" | "Platinum";
-type Member = { id: string; name: string; alias: string; phone: string; rank: Rank; spend: number; points: number; last: string; daysSinceVisit: number; joinedDays: number; dogs: number; cats: number };
-const seedData: Member[] = [
-  ["รัชนีญา จันทร์เพ็ญ", "พี่แอน", "081-456-7890", "Gold", 28750, 2875, 0, 2, 0], ["ธีรพล สุขสวัสดิ์", "เฮียต้น", "089-123-4567", "Gold", 24600, 2460, 1, 0, 0], ["ศิริวรรณ คำก้อน", "ป้าหน่อย", "062-987-6543", "Silver", 21380, 2138, 0, 3, 1], ["อนุชา ลิ้มทอง", "น้องชา", "094-321-0987", "Silver", 18950, 1895, 2, 1, 0], ["กาญจนา แซ่ตั้ง", "ปุ้ย", "065-789-2345", "Silver", 17420, 1742, 1, 2, 2], ["สุรเดช พึ่งพา", "เดช", "091-234-5678", "Member", 14860, 1486, 3, 0, 0], ["จิราภรณ์ มากมี", "แหม่ม", "080-555-7788", "Member", 12970, 1297, 0, 4, 5], ["นภัสสร อิ่มใจ", "น้องแนน", "083-444-2211", "Member", 11230, 1123, 1, 1, 10], ["วัชรพงษ์ คงดี", "พี่โต้ง", "092-777-8899", "Gold", 10860, 1086, 2, 0, 32], ["ณัฐชา ศรีสมบัติ", "น้องฟ้า", "098-654-3210", "Silver", 10450, 1045, 0, 2, 45],
-].map((row, index) => ({ id: `seed-${index}`, name: String(row[0]), alias: String(row[1]), phone: String(row[2]), rank: row[3] as Rank, spend: Number(row[4]), points: Number(row[5]), dogs: Number(row[6]), cats: Number(row[7]), daysSinceVisit: Number(row[8]), joinedDays: index + 1, last: Number(row[8]) === 0 ? "วันนี้" : `${row[8]} วันที่แล้ว` }));
-const columns = ["เบอร์โทร", "แรงค์", "ยอดซื้อ", "แต้ม", "ใช้งานล่าสุด", "สัตว์เลี้ยง"] as const;
-type Column = typeof columns[number];
+type Rank = { id: string; name: string };
+type Member = { id: string; authUserId: string | null; name: string; alias: string; phone: string; rankId: string | null; rank: string; points: number; totalPoints: number; joinedAt: string; active: boolean };
+type PointHistory = { id: string; label: string; points: number; createdAt: string };
+
+const fallbackRanks: Rank[] = [{ id: "member", name: "Member" }, { id: "silver", name: "Silver" }, { id: "gold", name: "Gold" }, { id: "platinum", name: "Platinum" }];
+const seedMembers: Member[] = [
+  ["ปุ้ย", "คุณปุ้ยชา วงศ์สมบัติ", "0657892345", "Gold", 1742], ["พี่อาร์ม", "คุณกรกช เลิศประเสริฐ", "0891234321", "Silver", 1560],
+  ["แม่พลอย", "คุณพัชรินทร์ ศรีสุวรรณ", "0659876543", "Gold", 980], ["พี่กฤษ", "คุณกฤษฎา พันธุ์ทวี", "0923456789", "Silver", 430],
+  ["น้องวาวา", "คุณวราพร จันทร์สุข", "0834567890", "Gold", 2150], ["น้องแดน", "คุณธนวัฒน์ อ่อนน้อม", "0918765432", "Silver", 710],
+  ["แม่เอ๋", "คุณสุภาวดี นิ่มนวล", "0887654321", "Gold", 320], ["พี่ปริญ", "คุณปริญญา สกุลไทย", "0903219876", "Silver", 1080],
+  ["น้องมิ้นท์", "คุณมนัสนันท์ วิริยะกิจ", "0816543210", "Member", 210], ["คุณกอล์ฟ", "คุณกฤษณ์ กิตติเดช", "0987652109", "Silver", 645],
+].map((item, index) => ({ id: `seed-${index}`, authUserId: null, alias: String(item[0]), name: String(item[1]), phone: String(item[2]), rankId: String(item[3]).toLowerCase(), rank: String(item[3]), points: Number(item[4]), totalPoints: Number(item[4]) * 2, joinedAt: "15 ม.ค. 2567", active: true }));
+
+const formatPhone = (phone: string) => phone.replace(/\D/g, "").replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3");
 
 export default function MembersPage() {
   const { notify } = useFeedback();
-  const [members, setMembers] = useState(seedData);
-  const [group, setGroup] = useState("ทั้งหมด");
-  const [rankOpen, setRankOpen] = useState(false);
+  const [members, setMembers] = useState(seedMembers);
+  const [ranks, setRanks] = useState(fallbackRanks);
+  const [selectedId, setSelectedId] = useState(seedMembers[0].id);
   const [query, setQuery] = useState("");
-  const [ascending, setAscending] = useState(false);
-  const [period, setPeriod] = useState("สะสมทั้งหมด");
-  const [groupPeriod, setGroupPeriod] = useState("30 วัน");
-  const [visibleColumns, setVisibleColumns] = useState<Column[]>(["เบอร์โทร", "แรงค์", "ยอดซื้อ", "แต้ม", "ใช้งานล่าสุด"]);
-  const [draftColumns, setDraftColumns] = useState<Column[]>(visibleColumns);
-  const [petFilter, setPetFilter] = useState("ทั้งหมด");
-  const [modal, setModal] = useState<"add" | "filter" | "columns" | "custom" | "detail" | null>(null);
-  const [selected, setSelected] = useState<Member | null>(null);
-  const [selectedAlias, setSelectedAlias] = useState("");
-  const [newMember, setNewMember] = useState({ phone: "", name: "", alias: "" });
+  const [status, setStatus] = useState<"ทั้งหมด" | "ใช้งาน">("ทั้งหมด");
+  const [draft, setDraft] = useState(seedMembers[0]);
+  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [newMember, setNewMember] = useState({ alias: "", name: "", phone: "" });
+  const [pointHistory, setPointHistory] = useState<PointHistory[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   useEffect(() => {
-    const supabase = createClient();
-    supabase.from("members").select("id,full_name,admin_alias,phone,total_spend,points_balance,dog_count,cat_count,last_active_at,created_at,ranks(name)").order("total_spend", { ascending: false }).then(({ data, error }) => {
-      if (error || !data?.length) return;
-      const now = Date.now();
-      setMembers(data.map((item) => { const lastTime = item.last_active_at ? new Date(item.last_active_at).getTime() : now; const joinedTime = new Date(item.created_at).getTime(); const related = item.ranks as unknown as { name?: string } | null; return { id: item.id, name: item.full_name, alias: item.admin_alias || item.full_name, phone: item.phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1-$2-$3"), rank: (related?.name ?? "Member") as Rank, spend: Number(item.total_spend), points: item.points_balance, last: item.last_active_at ? new Date(item.last_active_at).toLocaleDateString("th-TH", { dateStyle: "medium" }) : "ยังไม่เคยซื้อ", daysSinceVisit: Math.floor((now - lastTime) / 86400000), joinedDays: Math.floor((now - joinedTime) / 86400000), dogs: item.dog_count, cats: item.cat_count }; }));
+    const db = createClient();
+    void Promise.all([
+      db.from("members").select("id,auth_user_id,full_name,admin_alias,phone,points_balance,total_spend,created_at,is_active,rank_id,ranks(id,name)").order("created_at", { ascending: false }),
+      db.from("ranks").select("id,name").eq("is_active", true).order("sort_order"),
+    ]).then(([memberResult, rankResult]) => {
+      if (rankResult.data?.length) setRanks(rankResult.data as Rank[]);
+      if (!memberResult.data?.length) return;
+      const loaded = memberResult.data.map((item) => {
+        const related = item.ranks as unknown as Rank | null;
+        return { id: item.id, authUserId: item.auth_user_id, name: item.full_name, alias: item.admin_alias || item.full_name, phone: item.phone, rankId: item.rank_id, rank: related?.name ?? "Member", points: Number(item.points_balance), totalPoints: Math.max(Number(item.points_balance), Math.floor(Number(item.total_spend))), joinedAt: new Date(item.created_at).toLocaleDateString("th-TH", { dateStyle: "medium" }), active: item.is_active } satisfies Member;
+      });
+      setMembers(loaded); setHistoryLoading(true); setSelectedId(loaded[0].id); setDraft(loaded[0]);
     });
   }, []);
 
-  const rows = useMemo(() => members.filter((member) => {
-    const inGroup = group === "ทั้งหมด" || group === "ลูกค้าใหม่" && member.joinedDays <= Number(groupPeriod.split(" ")[0] || 30) || group === "ไม่ได้กลับมา" && member.daysSinceVisit >= Number(groupPeriod.split(" ")[0] || 30) || ["Gold", "Silver", "Member", "Platinum"].includes(group) && member.rank === group;
-    const searchMatch = `${member.name}${member.alias}${member.phone}`.toLowerCase().includes(query.toLowerCase().trim());
-    const petsMatch = petFilter === "ทั้งหมด" || petFilter === "มีสุนัข" && member.dogs > 0 || petFilter === "มีแมว" && member.cats > 0;
-    return inGroup && searchMatch && petsMatch;
-  }).sort((a, b) => ascending ? a.spend - b.spend : b.spend - a.spend), [members, group, groupPeriod, query, petFilter, ascending]);
+  useEffect(() => {
+    if (!selectedId || selectedId.startsWith("seed-")) return;
+    const db = createClient();
+    void db.from("point_transactions").select("*").eq("member_id", selectedId).order("created_at", { ascending: false }).limit(30).then(({ data }) => {
+      setPointHistory((data ?? []).map((row) => normalizePointHistory(row as Record<string, unknown>)));
+      setHistoryLoading(false);
+    });
+  }, [selectedId]);
 
-  const exportCsv = () => {
-    const csv = ["ชื่อ,ชื่อเรียก,เบอร์โทร,แรงค์,ยอดซื้อ,แต้ม,ใช้งานล่าสุด", ...rows.map((member) => `${member.name},${member.alias},${member.phone},${member.rank},${member.spend},${member.points},${member.last}`)].join("\n");
-    const url = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
-    const anchor = document.createElement("a"); anchor.href = url; anchor.download = "tammy-members.csv"; anchor.click(); URL.revokeObjectURL(url);
-    notify(`ส่งออกสมาชิก ${rows.length} รายการแล้ว`);
-  };
+  const selected = members.find((member) => member.id === selectedId) ?? members[0];
+  const filtered = useMemo(() => members.filter((member) => {
+    const keyword = query.trim().toLowerCase();
+    return `${member.alias} ${member.name} ${member.phone}`.toLowerCase().includes(keyword) && (status === "ทั้งหมด" || member.active);
+  }), [members, query, status]);
 
-  const addMember = async () => {
-    const digits = newMember.phone.replace(/\D/g, "");
-    if (!/^0\d{8,9}$/.test(digits) || !newMember.name.trim()) { notify("กรุณากรอกชื่อและเบอร์โทรให้ถูกต้อง", "info"); return; }
-    const supabase = createClient();
-    const { data: memberRank } = await supabase.from("ranks").select("id").eq("name", "Member").maybeSingle();
-    const { data, error } = await supabase.from("members").insert({ phone: digits, full_name: newMember.name.trim(), admin_alias: newMember.alias.trim() || null, rank_id: memberRank?.id ?? null, total_spend: 0, points_balance: 0 }).select("id").single();
-    if (error) { notify(error.code === "23505" ? "เบอร์โทรศัพท์นี้เป็นสมาชิกแล้ว" : "เพิ่มสมาชิกไม่สำเร็จ กรุณาลองอีกครั้ง", "info"); return; }
-    setMembers((current) => [{ id: data.id, name: newMember.name, alias: newMember.alias || newMember.name, phone: digits.replace(/(\d{3})(\d{3})(\d+)/, "$1-$2-$3"), rank: "Member", spend: 0, points: 0, last: "ยังไม่เคยซื้อ", daysSinceVisit: 0, joinedDays: 0, dogs: 0, cats: 0 }, ...current]);
-    setNewMember({ phone: "", name: "", alias: "" }); setModal(null); notify("เพิ่มสมาชิกเรียบร้อยแล้ว");
-  };
+  async function saveMember() {
+    if (!draft.alias.trim() || !draft.name.trim() || !/^0\d{9}$/.test(draft.phone.replace(/\D/g, ""))) return notify("กรุณากรอกชื่อและเบอร์โทรศัพท์ให้ถูกต้อง", "info");
+    setSaving(true);
+    if (!draft.id.startsWith("seed-")) {
+      const { error } = await createClient().from("members").update({ admin_alias: draft.alias.trim(), full_name: draft.name.trim(), phone: draft.phone.replace(/\D/g, "") }).eq("id", draft.id);
+      if (error) { notify("บันทึกข้อมูลสมาชิกไม่สำเร็จ", "info"); setSaving(false); return; }
+    }
+    setMembers((current) => current.map((member) => member.id === draft.id ? { ...draft } : member)); setSaving(false); notify("บันทึกข้อมูลสมาชิกแล้ว");
+  }
 
-  const openDetail = (member: Member) => { setSelected(member); setSelectedAlias(member.alias); setModal("detail"); };
-  const show = (column: Column) => visibleColumns.includes(column);
+  async function resetPassword() {
+    if (newPassword.length < 8) return notify("รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร", "info");
+    if (newPassword !== confirmPassword) return notify("รหัสผ่านทั้งสองช่องไม่ตรงกัน", "info");
+    if (!draft.authUserId) return notify("สมาชิกตัวอย่างนี้ยังไม่ได้เชื่อมบัญชีเข้าสู่ระบบ", "info");
+    setResetting(true);
+    const response = await fetch(`/api/admin/members/${draft.id}/password`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: newPassword }) });
+    const result = await response.json().catch(() => ({})); setResetting(false);
+    if (!response.ok) return notify(String(result.message ?? "รีเซ็ตรหัสผ่านไม่สำเร็จ"), "info");
+    setPasswordOpen(false); setNewPassword(""); setConfirmPassword(""); notify("ตั้งรหัสผ่านใหม่ให้สมาชิกแล้ว");
+  }
 
+  async function addMember() {
+    const phone = newMember.phone.replace(/\D/g, "");
+    if (!newMember.name.trim() || !/^0\d{9}$/.test(phone)) return notify("กรุณากรอกชื่อและเบอร์โทรศัพท์ให้ถูกต้อง", "info");
+    const defaultRank = ranks[0];
+    const { data, error } = await createClient().from("members").insert({ full_name: newMember.name.trim(), admin_alias: newMember.alias.trim() || null, phone, rank_id: defaultRank?.id ?? null, points_balance: 0, total_spend: 0, is_active: true }).select("id,created_at").single();
+    if (error) return notify(error.code === "23505" ? "เบอร์โทรศัพท์นี้เป็นสมาชิกแล้ว" : "เพิ่มสมาชิกไม่สำเร็จ", "info");
+    const created: Member = { id: data.id, authUserId: null, name: newMember.name.trim(), alias: newMember.alias.trim() || newMember.name.trim(), phone, rankId: defaultRank?.id ?? null, rank: defaultRank?.name ?? "Member", points: 0, totalPoints: 0, joinedAt: new Date(data.created_at).toLocaleDateString("th-TH", { dateStyle: "medium" }), active: true };
+    setMembers((current) => [created, ...current]); setSelectedId(created.id); setAddOpen(false); setNewMember({ alias: "", name: "", phone: "" }); notify("เพิ่มสมาชิกแล้ว");
+  }
+
+  function exportCsv() {
+    const csv = ["ชื่อที่พนักงานจำ,ชื่อสมาชิก,เบอร์โทร,ระดับสมาชิก,แต้ม,สถานะ", ...filtered.map((member) => [member.alias, member.name, member.phone, member.rank, member.points, member.active ? "ใช้งาน" : "ไม่ใช้งาน"].join(","))].join("\n");
+    const url = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" })); const link = document.createElement("a"); link.href = url; link.download = "tammy-members.csv"; link.click(); URL.revokeObjectURL(url);
+  }
+
+  if (!selected) return null;
   return <div className="mx-auto max-w-[1500px] animate-rise">
-    <PageHeader title="สมาชิก" description="ค้นหา จัดกลุ่ม และวิเคราะห์ข้อมูลสมาชิก" action={<Button variant="primary" icon={<Plus size={18} />} onClick={() => setModal("add")}>เพิ่มสมาชิก</Button>} />
-
-    <Surface className="mb-4 overflow-visible p-2"><div className="flex flex-wrap items-center gap-1">
-      {[{ label: "ทั้งหมด", count: members.length }, { label: "ลูกค้าใหม่", count: members.filter((item) => item.joinedDays <= 30).length }, { label: "ไม่ได้กลับมา", count: members.filter((item) => item.daysSinceVisit >= 30).length }].map((item) => <button type="button" key={item.label} onClick={() => setGroup(item.label)} className={`min-h-11 rounded-xl px-4 text-sm font-semibold transition ${group === item.label ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}>{item.label} <span className="opacity-60">({item.count.toLocaleString()})</span></button>)}
-      <div className="relative"><button type="button" aria-expanded={rankOpen} onClick={() => setRankOpen((value) => !value)} className={`flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold ${["Gold", "Silver", "Member", "Platinum"].includes(group) ? "bg-[var(--brand-50)] text-[var(--brand-600)]" : "text-stone-600 hover:bg-stone-50"}`}>แรงค์{["Gold", "Silver", "Member", "Platinum"].includes(group) ? `: ${group}` : ""}<ChevronDown size={16} /></button>{rankOpen ? <div className="absolute left-0 top-12 z-30 w-52 rounded-xl border border-stone-200 bg-white p-2 shadow-xl animate-pop">{["Member", "Silver", "Gold", "Platinum"].map((rank) => <button type="button" key={rank} onClick={() => { setGroup(rank); setRankOpen(false); }} className="flex w-full justify-between rounded-lg px-3 py-2.5 text-sm hover:bg-stone-50"><span>{rank}</span><span className="text-stone-400">{members.filter((item) => item.rank === rank).length} คน</span></button>)}</div> : null}</div>
-      {["ลูกค้าใหม่", "ไม่ได้กลับมา"].includes(group) ? <div className="ml-auto flex flex-wrap gap-1">{["วันนี้", "7 วัน", "30 วัน", "กำหนดเอง"].map((item) => <button type="button" key={item} onClick={() => item === "กำหนดเอง" ? setModal("custom") : setGroupPeriod(item)} className={`min-h-9 rounded-lg px-3 text-xs font-semibold ${groupPeriod === item ? "bg-[var(--brand-50)] text-[var(--brand-600)]" : "text-stone-500 hover:bg-stone-50"}`}>{item}</button>)}</div> : null}
-    </div></Surface>
-
-    <Surface className="overflow-hidden">
-      <div className="flex flex-wrap gap-2 border-b border-stone-100 p-4"><div className="control flex min-w-[250px] flex-1 items-center gap-2 px-3"><Search size={18} className="text-stone-400" /><input value={query} onChange={(event) => setQuery(event.target.value)} className="w-full bg-transparent text-sm outline-none" placeholder="ค้นหาชื่อ ชื่อเรียกในร้าน หรือเบอร์โทร" /></div><Button icon={<Filter size={17} />} onClick={() => setModal("filter")}>ตัวกรอง</Button><Button icon={<SlidersHorizontal size={17} />} onClick={() => { setDraftColumns(visibleColumns); setModal("columns"); }}>เลือกคอลัมน์</Button><Button icon={<Download size={17} />} onClick={exportCsv}>ส่งออก CSV</Button></div>
-      <div className="flex flex-wrap items-center gap-2 border-b border-stone-100 p-3 text-sm"><span className="font-semibold">ยอดซื้อ</span><Button size="sm" variant={!ascending ? "primary" : "ghost"} onClick={() => setAscending(false)}>มาก → น้อย</Button><Button size="sm" variant={ascending ? "primary" : "ghost"} onClick={() => setAscending(true)}>น้อย → มาก</Button><div className="ml-auto flex flex-wrap gap-1">{["สะสมทั้งหมด", "30 วัน", "90 วัน", "กำหนดช่วงเวลา"].map((item) => <Button key={item} size="sm" variant={period === item ? "primary" : "ghost"} onClick={() => item === "กำหนดช่วงเวลา" ? setModal("custom") : setPeriod(item)}>{item}</Button>)}</div></div>
-      <div className="max-h-[calc(100vh-330px)] min-h-[480px] overflow-auto soft-scroll"><table className="w-full min-w-[850px] border-collapse text-sm"><thead className="sticky top-0 z-10 bg-[#fbfaf9] text-left"><tr><th className="border-b border-stone-200 px-4 py-3">อันดับ</th><th className="border-b border-stone-200 px-4 py-3">ชื่อลูกค้า</th>{show("เบอร์โทร") ? <th className="border-b border-stone-200 px-4 py-3">เบอร์โทร</th> : null}{show("แรงค์") ? <th className="border-b border-stone-200 px-4 py-3">แรงค์</th> : null}{show("ยอดซื้อ") ? <th className="border-b border-stone-200 px-4 py-3">ยอดซื้อ</th> : null}{show("แต้ม") ? <th className="border-b border-stone-200 px-4 py-3">แต้ม</th> : null}{show("ใช้งานล่าสุด") ? <th className="border-b border-stone-200 px-4 py-3">ใช้งานล่าสุด</th> : null}{show("สัตว์เลี้ยง") ? <th className="border-b border-stone-200 px-4 py-3">สัตว์เลี้ยง</th> : null}<th className="border-b border-stone-200 px-4 py-3"><span className="sr-only">ดูรายละเอียด</span></th></tr></thead><tbody>{rows.map((member, index) => <tr key={member.id} className="table-row content-auto border-b border-stone-100"><td className="px-4 py-3 text-stone-400">{index + 1}</td><td className="px-4 py-3"><b className="block text-stone-800">{member.name}</b><small className="text-stone-400">{member.alias} · เฉพาะพนักงาน</small></td>{show("เบอร์โทร") ? <td className="px-4 py-3">{member.phone}</td> : null}{show("แรงค์") ? <td className="px-4 py-3"><Badge tone={member.rank === "Gold" ? "warning" : member.rank === "Member" ? "success" : "neutral"}>{member.rank}</Badge></td> : null}{show("ยอดซื้อ") ? <td className="px-4 py-3 font-semibold">฿{member.spend.toLocaleString()}</td> : null}{show("แต้ม") ? <td className="px-4 py-3">{member.points.toLocaleString()}</td> : null}{show("ใช้งานล่าสุด") ? <td className="px-4 py-3 text-stone-500">{member.last}</td> : null}{show("สัตว์เลี้ยง") ? <td className="px-4 py-3">สุนัข {member.dogs} · แมว {member.cats}</td> : null}<td className="px-4 py-3"><button type="button" aria-label={`ดู ${member.name}`} onClick={() => openDetail(member)} className="grid h-9 w-9 place-items-center rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700"><Eye size={17} /></button></td></tr>)}</tbody></table>{rows.length === 0 ? <div className="p-12 text-center text-sm text-stone-500">ไม่พบสมาชิกตามตัวกรอง</div> : <div className="p-4 text-center text-xs text-stone-400">แสดง {rows.length} รายการ · เลื่อนลงเพื่อดูต่อ</div>}</div>
-    </Surface>
-
-    <Modal open={modal === "add"} title="เพิ่มสมาชิก" description="สมัครสมาชิกด้วยเบอร์โทรศัพท์เท่านั้น" onClose={() => setModal(null)}><div className="space-y-4"><Field label="เบอร์โทรศัพท์ *"><Input value={newMember.phone} onChange={(event) => setNewMember({ ...newMember, phone: event.target.value })} placeholder="081-234-5678" inputMode="tel" /></Field><Field label="ชื่อ–นามสกุล *"><Input value={newMember.name} onChange={(event) => setNewMember({ ...newMember, name: event.target.value })} /></Field><Field label="ชื่อเรียกในร้าน" hint="เฉพาะพนักงาน ลูกค้าจะไม่เห็น"><Input value={newMember.alias} onChange={(event) => setNewMember({ ...newMember, alias: event.target.value })} /></Field><Button variant="primary" className="w-full" onClick={addMember}>บันทึกสมาชิก</Button></div></Modal>
-    <Modal open={modal === "filter"} title="ตัวกรองสมาชิก" onClose={() => setModal(null)}><Field label="สัตว์เลี้ยง"><Select value={petFilter} onChange={(event) => setPetFilter(event.target.value)}><option>ทั้งหมด</option><option>มีสุนัข</option><option>มีแมว</option></Select></Field><Button variant="primary" className="mt-5 w-full" onClick={() => { setModal(null); notify("ใช้ตัวกรองแล้ว"); }}>ใช้ตัวกรอง</Button></Modal>
-    <Modal open={modal === "columns"} title="เลือกคอลัมน์ที่แสดง" onClose={() => setModal(null)}><div className="grid grid-cols-2 gap-2">{columns.map((column) => <label key={column} className="control flex items-center gap-2 px-3 text-sm"><input type="checkbox" checked={draftColumns.includes(column)} onChange={() => setDraftColumns((current) => current.includes(column) ? current.filter((item) => item !== column) : [...current, column])} />{column}</label>)}</div><Button variant="primary" className="mt-5 w-full" onClick={() => { setVisibleColumns(draftColumns); setModal(null); notify("บันทึกคอลัมน์แล้ว"); }}>บันทึก</Button></Modal>
-    <Modal open={modal === "custom"} title="กำหนดช่วงเวลา" onClose={() => setModal(null)}><div className="grid gap-3 sm:grid-cols-2"><Field label="วันที่เริ่มต้น"><Input type="date" /></Field><Field label="วันที่สิ้นสุด"><Input type="date" /></Field></div><Button variant="primary" className="mt-5 w-full" onClick={() => { setPeriod("กำหนดช่วงเวลา"); setGroupPeriod("กำหนดเอง"); setModal(null); notify("ใช้ช่วงเวลาที่กำหนดแล้ว"); }}>ใช้ช่วงเวลา</Button></Modal>
-    <Modal open={modal === "detail" && Boolean(selected)} title="ข้อมูลสมาชิก" onClose={() => setModal(null)}>{selected ? <div><div className="surface-subtle p-4"><b>{selected.name}</b><p className="mt-1 text-sm text-stone-500">{selected.phone}</p></div><div className="mt-4"><Field label="ชื่อที่พนักงานจำ" hint="ใช้ค้นหาและเลือกให้แต้มได้เร็วขึ้น ลูกค้าจะไม่เห็นข้อมูลนี้"><Input value={selectedAlias} onChange={(event) => setSelectedAlias(event.target.value)} placeholder="เช่น พี่อ้อย หรือ เฮียต้น" /></Field></div><dl className="mt-4 grid grid-cols-2 gap-3 text-sm"><div className="surface-subtle p-3"><dt className="text-stone-500">แรงค์</dt><dd className="mt-1 font-bold">{selected.rank}</dd></div><div className="surface-subtle p-3"><dt className="text-stone-500">แต้ม</dt><dd className="mt-1 font-bold">{selected.points.toLocaleString()}</dd></div><div className="surface-subtle p-3"><dt className="text-stone-500">ยอดซื้อ</dt><dd className="mt-1 font-bold">฿{selected.spend.toLocaleString()}</dd></div><div className="surface-subtle p-3"><dt className="text-stone-500">สัตว์เลี้ยง</dt><dd className="mt-1 font-bold">สุนัข {selected.dogs} · แมว {selected.cats}</dd></div></dl><Button variant="primary" className="mt-5 w-full" onClick={async () => { const { error } = await createClient().from("members").update({ admin_alias: selectedAlias.trim() || null }).eq("id", selected.id); if (error) { notify("บันทึกชื่อที่จำไม่สำเร็จ", "info"); return; } setMembers((current) => current.map((item) => item.id === selected.id ? { ...item, alias: selectedAlias.trim() || item.name } : item)); setSelected(null); setModal(null); notify("บันทึกชื่อที่พนักงานจำแล้ว"); }}>บันทึกข้อมูลสมาชิก</Button></div> : null}</Modal>
+    <header className="mb-4 flex flex-wrap items-start gap-4"><div className="min-w-0 flex-1"><h1 className="text-3xl font-black tracking-tight text-[var(--ink-950)]">สมาชิก</h1><p className="mt-1 text-sm text-stone-500">ค้นหา ดูข้อมูล และจัดการบัญชีสมาชิก</p></div><span className="inline-flex min-h-11 items-center gap-2 text-sm font-bold text-emerald-600"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500"/>พร้อมใช้งาน</span><Button icon={<Plus size={17}/>} onClick={() => setAddOpen(true)}>เพิ่มสมาชิก</Button><Button icon={<Download size={17}/>} onClick={exportCsv}>ส่งออกข้อมูล</Button></header>
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(430px,.85fr)]">
+      <Surface className="overflow-hidden"><div className="p-5 pb-3"><h2 className="flex items-center gap-2 text-lg font-black"><UserRound size={21}/>รายชื่อสมาชิก</h2><div className="control mt-4 flex items-center gap-2 px-3"><Search size={18} className="text-stone-400"/><input className="w-full bg-transparent text-sm outline-none" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ค้นหาจากชื่อที่จำ ชื่อจริง หรือเบอร์โทรศัพท์"/></div><div className="mt-3 flex items-center gap-2">{(["ทั้งหมด", "ใช้งาน"] as const).map((item) => <button type="button" key={item} onClick={() => setStatus(item)} className={`min-h-9 rounded-full border px-4 text-xs font-bold transition ${status === item ? "border-[var(--brand-300)] bg-[var(--brand-50)] text-[var(--brand-600)]" : "border-stone-200 text-stone-500 hover:bg-stone-50"}`}>{item}</button>)}<span className="ml-auto text-xs text-stone-500">สมาชิกทั้งหมด {members.length.toLocaleString()} คน</span></div></div>
+        <div className="grid grid-cols-[minmax(150px,1fr)_minmax(190px,1.25fr)_90px_82px_78px] gap-3 border-y border-stone-100 bg-[#fcfbfa] px-5 py-2 text-xs text-stone-500"><span>ชื่อที่พนักงานจำ</span><span>ชื่อสมาชิก / เบอร์โทรศัพท์</span><span>ระดับสมาชิก</span><span>แต้มปัจจุบัน</span><span>สถานะ</span></div>
+        <div className="h-[600px] overflow-y-auto px-3 py-1 soft-scroll">{filtered.map((member, index) => <button type="button" key={member.id} onClick={() => { setSelectedId(member.id); setDraft(member); }} className={`grid w-full grid-cols-[minmax(150px,1fr)_minmax(190px,1.25fr)_90px_82px_78px] items-center gap-3 rounded-xl border-b border-stone-100 px-3 py-3 text-left transition ${selectedId === member.id ? "border border-[var(--brand-200)] bg-[var(--brand-50)] shadow-sm" : "hover:bg-stone-50"}`}><span className="flex min-w-0 items-center gap-3"><span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-sm font-black ${index % 2 ? "bg-blue-50 text-blue-600" : "bg-orange-50 text-orange-700"}`}>{member.alias.slice(0, 1)}</span><b className="truncate text-base text-stone-900">{member.alias}</b></span><span className="min-w-0"><span className="block truncate text-sm font-medium text-stone-700">{member.name}</span><small className="text-stone-500">{formatPhone(member.phone)}</small></span><Badge tone={member.rank === "Gold" ? "warning" : member.rank === "Member" ? "brand" : "neutral"} className="w-fit"><Crown size={12} className="mr-1"/>{member.rank}</Badge><span className="text-sm font-semibold">{member.points.toLocaleString()}</span><span className="flex items-center justify-between">{member.active ? <Badge tone="success">ใช้งาน</Badge> : <span className="text-xs text-stone-400">ไม่ใช้งาน</span>}<span className={`grid h-5 w-5 place-items-center rounded-full border ${selectedId === member.id ? "border-[var(--brand-500)] bg-[var(--brand-500)] text-white" : "border-stone-300"}`}>{selectedId === member.id ? <Check size={12}/> : null}</span></span></button>)}{!filtered.length ? <p className="py-20 text-center text-sm text-stone-400">ไม่พบสมาชิกที่ค้นหา</p> : null}</div>
+      </Surface>
+      <Surface className="overflow-hidden p-5"><h2 className="flex items-center gap-2 text-lg font-black"><UserRound size={21}/>ข้อมูลสมาชิก</h2><div className="mt-4 flex items-center gap-3"><span className="grid h-14 w-14 place-items-center rounded-full bg-orange-50 text-xl font-black text-orange-700">{draft.alias.slice(0, 1)}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><b className="text-2xl text-stone-900">{draft.alias}</b><Badge tone={draft.rank === "Gold" ? "warning" : "neutral"}><Crown size={12} className="mr-1"/>{draft.rank}</Badge>{draft.active ? <Badge tone="success">ใช้งาน</Badge> : null}</div><p className="mt-1 text-xs text-stone-400">รหัสสมาชิก {draft.id.slice(0, 8)}</p></div></div>
+        <div className="mt-5 grid gap-4 sm:grid-cols-2"><Field label="ชื่อที่พนักงานจำ"><Input value={draft.alias} onChange={(event) => setDraft({ ...draft, alias: event.target.value })}/></Field><Field label="ชื่อ–นามสกุล"><Input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })}/></Field><Field label="เบอร์โทรศัพท์"><Input inputMode="tel" value={formatPhone(draft.phone)} onChange={(event) => setDraft({ ...draft, phone: event.target.value })}/></Field><Field label="ระดับสมาชิก" hint="ระบบคำนวณจากแต้มสะสมโดยอัตโนมัติ"><div className="control flex items-center gap-2 bg-stone-50 px-3 text-sm font-bold text-stone-600"><Crown size={15}/>{draft.rank}</div></Field></div>
+        <dl className="mt-4 grid grid-cols-3 divide-x divide-orange-100 rounded-2xl border border-orange-100 bg-orange-50/45 py-4 text-center"><div><dt className="text-xs text-stone-500">แต้มปัจจุบัน</dt><dd className="mt-1 text-xl font-black text-[var(--brand-600)]">{draft.points.toLocaleString()}</dd></div><div><dt className="text-xs text-stone-500">แต้มสะสมทั้งหมด</dt><dd className="mt-1 text-xl font-black">{draft.totalPoints.toLocaleString()}</dd></div><div><dt className="text-xs text-stone-500">สมัครเมื่อ</dt><dd className="mt-1 text-sm font-black">{draft.joinedAt}</dd></div></dl><Button variant="primary" className="mt-4 w-full" disabled={saving} onClick={saveMember}>{saving ? "กำลังบันทึก..." : "บันทึกการแก้ไข"}</Button>
+        <section className="mt-4 rounded-2xl border border-orange-100 bg-[#fffaf4] p-4"><div className="flex gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-orange-100 text-orange-700"><LockKeyhole size={19}/></span><div><h3 className="font-black text-orange-900">รหัสผ่านและการเข้าใช้งาน</h3><p className="mt-0.5 text-xs text-stone-500">เพื่อความปลอดภัย ระบบไม่สามารถแสดงรหัสผ่านเดิมได้ แต่แอดมินตั้งรหัสผ่านใหม่ให้สมาชิกได้</p></div></div><Button className="mt-4 w-full border-[var(--brand-300)] text-[var(--brand-600)]" icon={<KeyRound size={17}/>} onClick={() => setPasswordOpen(true)}>ตั้งรหัสผ่านใหม่</Button></section>
+        <section className="mt-4 overflow-hidden rounded-2xl border border-stone-200 bg-white"><div className="flex items-center gap-2 border-b border-stone-100 px-4 py-3"><History size={18} className="text-[var(--brand-600)]"/><h3 className="font-black">ประวัติแต้ม</h3><span className="ml-auto text-xs text-stone-400">ล่าสุด 30 รายการ</span></div>{historyLoading ? <p className="px-4 py-8 text-center text-sm text-stone-400">กำลังโหลดประวัติ...</p> : pointHistory.length ? <div className="max-h-64 divide-y divide-stone-100 overflow-y-auto soft-scroll">{pointHistory.map((item) => <div key={item.id} className="flex items-center gap-3 px-4 py-3"><span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${item.points >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-500"}`}><Star size={16}/></span><span className="min-w-0 flex-1"><b className="block truncate text-sm">{item.label}</b><small className="mt-0.5 flex items-center gap-1 text-stone-400"><CalendarDays size={12}/>{new Date(item.createdAt).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" })}</small></span><b className={item.points >= 0 ? "text-emerald-600" : "text-red-500"}>{item.points >= 0 ? "+" : ""}{item.points.toLocaleString()} แต้ม</b></div>)}</div> : <div className="px-4 py-8 text-center"><span className="mx-auto grid h-11 w-11 place-items-center rounded-full bg-stone-100 text-stone-400"><History size={19}/></span><b className="mt-3 block text-sm">ยังไม่มีประวัติแต้ม</b><p className="mt-1 text-xs text-stone-400">สมาชิกใหม่จะเริ่มที่ 0 แต้ม และไม่มีรายการย้อนหลัง</p></div>}</section>
+      </Surface>
+    </div>
+    <Modal open={passwordOpen} title="ตั้งรหัสผ่านใหม่" description={`กำหนดรหัสผ่านใหม่ให้ ${draft.alias} โดยรหัสผ่านเดิมจะไม่ถูกเปิดเผย`} onClose={() => setPasswordOpen(false)} size="sm"><div className="space-y-4"><div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">หลังบันทึก สมาชิกจะเข้าสู่ระบบด้วยรหัสผ่านใหม่ทันที กรุณาส่งรหัสผ่านให้สมาชิกผ่านช่องทางที่ปลอดภัย</div><Field label="รหัสผ่านใหม่" hint="อย่างน้อย 8 ตัวอักษร"><Input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)}/></Field><Field label="ยืนยันรหัสผ่านใหม่"><Input type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)}/></Field><div className="grid grid-cols-2 gap-2"><Button onClick={() => setPasswordOpen(false)}>ยกเลิก</Button><Button variant="primary" disabled={resetting} onClick={resetPassword}>{resetting ? "กำลังบันทึก..." : "ยืนยันรีเซ็ต"}</Button></div></div></Modal>
+    <Modal open={addOpen} title="เพิ่มสมาชิก" description="เพิ่มข้อมูลสมาชิกใหม่ในระบบ" onClose={() => setAddOpen(false)} size="sm"><div className="space-y-4"><Field label="ชื่อที่พนักงานจำ"><Input value={newMember.alias} onChange={(event) => setNewMember({ ...newMember, alias: event.target.value })}/></Field><Field label="ชื่อ–นามสกุล"><Input value={newMember.name} onChange={(event) => setNewMember({ ...newMember, name: event.target.value })}/></Field><Field label="เบอร์โทรศัพท์"><Input inputMode="tel" value={newMember.phone} onChange={(event) => setNewMember({ ...newMember, phone: event.target.value })}/></Field><Button variant="primary" className="w-full" onClick={addMember}>บันทึกสมาชิก</Button></div></Modal>
   </div>;
+}
+
+function normalizePointHistory(row: Record<string, unknown>): PointHistory {
+  const points = Number(row.points_delta ?? row.points ?? row.amount ?? 0);
+  const purchaseAmount = Number(row.purchase_amount ?? 0);
+  const type = String(row.type ?? row.transaction_type ?? "");
+  const fallbackLabel = points >= 0
+    ? purchaseAmount > 0 ? `ได้รับจากยอดซื้อ ฿${purchaseAmount.toLocaleString()}` : "ได้รับแต้ม"
+    : type.includes("redeem") ? "ใช้แต้มแลกรางวัล" : "ใช้แต้ม";
+  return {
+    id: String(row.id ?? `${row.created_at}-${points}`),
+    label: String(row.description ?? row.note ?? fallbackLabel),
+    points,
+    createdAt: String(row.created_at ?? new Date(0).toISOString()),
+  };
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppProvider } from "@/components/app-provider";
+import { StoreBrandProvider } from "@/components/store-brand-provider";
 
 export const metadata: Metadata = {
   title: "แทมมี่อาหารสัตว์ | ระบบสมาชิก",
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="th">
-      <body><AppProvider>{children}</AppProvider></body>
+      <body><AppProvider><StoreBrandProvider>{children}</StoreBrandProvider></AppProvider></body>
     </html>
   );
 }

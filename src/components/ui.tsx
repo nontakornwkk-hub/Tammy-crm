@@ -21,7 +21,7 @@ export function Badge({ children, tone = "neutral", className }: { children: Rea
 }
 
 export function Segmented<T extends string>({ value, options, onChange, className }: { value: T; options: readonly T[]; onChange: (value: T) => void; className?: string }) {
-  return <div className={cn("inline-flex flex-wrap gap-1 rounded-xl border border-stone-200 bg-white p-1", className)}>{options.map((option) => <button type="button" key={option} onClick={() => onChange(option)} className={cn("min-h-9 rounded-lg px-4 text-sm font-semibold transition", value === option ? "bg-stone-900 text-white shadow-sm" : "text-stone-500 hover:bg-stone-50")}>{option}</button>)}</div>;
+  return <div className={cn("inline-flex flex-wrap gap-1 rounded-xl border border-stone-200 bg-white p-1", className)}>{options.map((option) => <button type="button" key={option} onClick={() => onChange(option)} className={cn("min-h-9 rounded-lg px-4 text-sm font-semibold transition", value === option ? "bg-[var(--brand-500)] text-white shadow-sm" : "text-stone-500 hover:bg-stone-50")}>{option}</button>)}</div>;
 }
 
 export function EmptyState({ icon, title, description, action }: { icon: ReactNode; title: string; description: string; action?: ReactNode }) {

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { BarChart3, Bell, ChevronDown, Gift, LogOut, Menu, Settings, Star, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -48,7 +49,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <aside className="desktop-only sticky top-0 flex h-screen flex-col border-r border-stone-200/80 bg-white/92 px-4 py-5 backdrop-blur-xl">
       <div className="mb-8 px-1"><Brand /></div>
       <NavList pathname={pathname} />
-      <div className="mt-auto rounded-2xl border border-stone-200 bg-stone-50 p-3">
+      <div className="mt-auto pt-6"><Image src="/assets/mascots/tammy-cat.png" width={160} height={160} alt="" className="mx-auto mb-5 h-36 object-contain opacity-90" /></div><div className="rounded-2xl border border-stone-200 bg-stone-50 p-3">
         <button type="button" onClick={() => setProfileOpen(true)} className="flex w-full items-center text-left"><span className="grid h-10 w-10 place-items-center rounded-full bg-white text-sm font-black text-[var(--brand-600)] shadow-sm">A</span><span className="ml-3 min-w-0 flex-1"><b className="block truncate text-sm">ผู้ดูแลระบบ</b><small className="text-stone-400">admin</small></span><ChevronDown size={16} className="text-stone-400" /></button>
       </div>
     </aside>
@@ -57,12 +58,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-30 flex h-16 items-center border-b border-stone-200/75 bg-white/88 px-4 backdrop-blur-xl lg:px-8">
         <button type="button" aria-label="เปิดเมนู" className="grid h-10 w-10 place-items-center rounded-xl hover:bg-stone-100 lg:hidden" onClick={() => setMobileOpen(true)}><Menu size={21} /></button>
         <div className="ml-2 lg:hidden"><Brand compact /></div>
-        <span className="ml-auto hidden text-xs text-stone-400 sm:block">ข้อมูลเชื่อมต่อ Supabase</span>
+        <span className="ml-auto hidden text-xs text-stone-400 sm:block">แทมมี่ · ระบบสมาชิก</span>
         <span className="ml-2 hidden h-2 w-2 rounded-full bg-emerald-500 sm:block" title="เชื่อมต่อแล้ว" />
         <button type="button" aria-label="ดูการแจ้งเตือน" onClick={() => setNotificationsOpen(true)} className="relative ml-4 grid h-10 w-10 place-items-center rounded-xl text-stone-500 hover:bg-stone-100"><Bell size={19} /><span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-red-500" /></button>
         <button type="button" onClick={() => setProfileOpen(true)} className="ml-2 hidden items-center gap-2 rounded-xl px-2 py-1.5 hover:bg-stone-100 sm:flex"><span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--brand-50)] text-xs font-black text-[var(--brand-600)]">A</span><span className="text-left"><b className="block text-xs">ผู้ดูแลระบบ</b><small className="block text-[10px] text-stone-400">admin</small></span><ChevronDown size={14} /></button>
       </header>
-      <main className="min-w-0 px-4 py-5 sm:px-7 lg:px-8 lg:py-7">{children}</main>
+      <main className="min-w-0 px-4 py-6 sm:px-7 lg:px-8 lg:py-8">{children}</main>
     </div>
 
     {mobileOpen ? <div className="fixed inset-0 z-50 bg-stone-950/35 lg:hidden" onMouseDown={() => setMobileOpen(false)}><aside className="h-full w-[290px] bg-white p-4 shadow-2xl animate-rise" onMouseDown={(event) => event.stopPropagation()}><div className="mb-7 flex items-center justify-between"><Brand /><button type="button" aria-label="ปิดเมนู" onClick={() => setMobileOpen(false)} className="grid h-9 w-9 place-items-center rounded-full bg-stone-100"><X size={18} /></button></div><NavList pathname={pathname} onNavigate={() => setMobileOpen(false)} /></aside></div> : null}

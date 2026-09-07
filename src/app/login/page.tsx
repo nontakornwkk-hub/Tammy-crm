@@ -86,21 +86,21 @@ export default function LoginPage() {
   ];
   const shownContacts = contacts.length ? contacts : fallbackContacts;
 
-  return <main className="min-h-screen bg-[#faf8f6] p-0 sm:grid sm:place-items-center sm:p-6">
-    <div className="grid min-h-screen w-full overflow-hidden bg-white sm:min-h-0 sm:max-w-[1120px] sm:rounded-[32px] sm:border sm:border-stone-200 sm:shadow-[0_28px_80px_rgba(68,44,35,.12)] lg:grid-cols-[.92fr_1.08fr]">
+  return <main className="min-h-screen bg-[#fff9f2] p-0 sm:grid sm:place-items-center sm:p-6">
+    <div className="grid min-h-screen w-full overflow-hidden bg-white sm:min-h-0 sm:max-w-[1320px] sm:rounded-[38px] sm:border sm:border-stone-200 sm:shadow-[0_28px_80px_rgba(68,44,35,.12)] lg:grid-cols-[.92fr_1.08fr]">
       <HeroPanel />
 
-      <section className="flex min-h-screen flex-col px-5 py-5 sm:min-h-[720px] sm:px-10 sm:py-8 lg:px-16 lg:py-10">
+      <section className="flex min-h-screen flex-col px-5 py-5 sm:min-h-[760px] sm:px-10 sm:py-8 lg:px-16 lg:py-10">
         <div className="flex items-center justify-between lg:hidden"><Brand compact /><span className="rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700">สมาชิกและสะสมแต้ม</span></div>
         <div className="mx-auto flex w-full max-w-[460px] flex-1 flex-col justify-center py-7">
           <div className="mb-7">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--brand-50)] px-3 py-1.5 text-xs font-bold text-[var(--brand-600)]"><Sparkles size={14} /> ยินดีต้อนรับกลับมา</span>
-            <h1 className="mt-4 text-[32px] font-black tracking-[-.03em] text-stone-900">{tab === "เข้าสู่ระบบ" ? "เข้าสู่ระบบของคุณ" : "สมัครสมาชิกใหม่"}</h1>
+            <h1 className="mt-4 text-[36px] font-black tracking-[-.03em] text-stone-900">ยินดีต้อนรับ</h1>
             <p className="mt-2 text-sm leading-6 text-stone-500">{tab === "เข้าสู่ระบบ" ? "เข้าสู่ระบบเพื่อดูแต้ม ข่าวสาร และของรางวัล" : "สมัครง่ายด้วยเบอร์โทร เริ่มต้นที่ 0 แต้ม"}</p>
           </div>
 
-          <div className="grid grid-cols-2 rounded-2xl bg-stone-100 p-1" role="tablist" aria-label="เลือกฟังก์ชัน">
-            {(["เข้าสู่ระบบ", "สมัครสมาชิก"] as const).map((item) => <button key={item} type="button" role="tab" aria-selected={tab === item} onClick={() => changeTab(item)} className={`min-h-11 rounded-xl px-4 text-sm font-bold transition-all ${tab === item ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-800"}`}>{item}</button>)}
+          <div className="grid grid-cols-2 overflow-hidden rounded-2xl border border-[var(--line)] bg-white" role="tablist" aria-label="เลือกฟังก์ชัน">
+            {(["เข้าสู่ระบบ", "สมัครสมาชิก"] as const).map((item) => <button key={item} type="button" role="tab" aria-selected={tab === item} onClick={() => changeTab(item)} className={`min-h-12 px-4 text-sm font-bold transition-all ${tab === item ? "bg-[var(--brand-500)] text-white shadow-sm" : "text-stone-500 hover:text-stone-800"}`}>{item}</button>)}
           </div>
 
           {registeredPhone ? <SuccessPanel phone={registeredPhone} onContinue={() => router.push("/customer")} /> : <form className="mt-6 space-y-4" onSubmit={submit}>
@@ -138,15 +138,15 @@ export default function LoginPage() {
 }
 
 function HeroPanel() {
-  return <aside className="relative hidden min-h-[720px] overflow-hidden bg-[#fff0e8] p-9 lg:flex lg:flex-col">
+  return <aside className="login-hero relative hidden min-h-[760px] overflow-hidden p-10 lg:flex lg:flex-col">
     <div className="absolute -right-28 -top-24 h-80 w-80 rounded-full border-[60px] border-white/35" />
     <div className="absolute -bottom-32 -left-28 h-72 w-72 rounded-full bg-[#ffd7c6]" />
     <div className="relative z-10"><Brand /></div>
-    <div className="relative z-10 my-auto">
-      <div className="relative mx-auto h-[390px] w-full"><Image src="/assets/heroes/login-hero.png" alt="แมวและอาหารสัตว์" fill priority sizes="500px" className="object-contain drop-shadow-[0_28px_30px_rgba(121,59,31,.16)]" /></div>
-      <div className="mt-4">
+    <div className="relative z-10 mt-10 flex flex-1 flex-col">
+      <div className="relative mx-auto order-2 mt-auto h-[390px] w-full"><Image src="/assets/heroes/login-hero.png" alt="แมวและอาหารสัตว์" fill priority sizes="500px" className="object-contain drop-shadow-[0_28px_30px_rgba(121,59,31,.16)]" /></div>
+      <div className="mt-4 order-1">
         <p className="text-xs font-black uppercase tracking-[.22em] text-[var(--brand-600)]">Tammy Loyalty</p>
-        <h2 className="mt-3 text-4xl font-black leading-[1.18] tracking-[-.03em] text-stone-900">ทุกการซื้อ<br /><span className="text-[var(--brand-600)]">มีความหมาย</span></h2>
+        <h2 className="mt-3 text-4xl font-black leading-[1.5] tracking-[-.03em] text-stone-900">สะสมแต้ม<br /><span className="text-[var(--brand-600)]">เติมความสุข</span><br />ให้เจ้าตัวเล็ก</h2>
         <p className="mt-4 max-w-sm text-sm leading-6 text-stone-600">สะสมแต้ม แลกของรางวัล และไม่พลาดข่าวดีสำหรับเจ้าตัวเล็ก</p>
       </div>
     </div>
